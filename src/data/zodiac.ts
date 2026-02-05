@@ -177,12 +177,12 @@ export function calculateCompatibility(sign1: string, sign2: string): Compatibil
 }
 
 export const dailyQuotes = [
-  { text: '星辰指引方向，但航行的船由你掌舵。', author: '星座屋' },
-  { text: '每一个结束都是新的开始。', author: '星座屋' },
-  { text: '相信宇宙的节奏，一切都会在正确的时间发生。', author: '星座屋' },
-  { text: '你的能量吸引着你所经历的一切。', author: '星座屋' },
-  { text: '在黑暗中，星星才会更加闪耀。', author: '星座屋' },
-  { text: '跟随你的直觉，它知道答案。', author: '星座屋' },
-  { text: '今天的努力是明天的收获。', author: '星座屋' },
-  { text: '爱自己是一生浪漫的开始。', author: '星座屋' },
+  { text: '星辰指引方向，但航行的船由你掌舵。', author: '今日运势' },
+  { text: '每一个结束都是新的开始。', author: '今日运势' },
+  { text: '相信宇宙的节奏，一切都会在正确的时间发生。', author: '今日运势' },
+  { text: '你的能量吸引着你所经历的一切。', author: '今日运势' },
+  { text: '在黑暗中，星星才会更加闪耀。', author: '今日运势' },
+  { text: '跟随你的直觉，它知道答案。', author: '今日运势' },
+  { text: '今天的努力是明天的收获。', author: '今日运势' },
+  { text: '爱自己是一生浪漫的开始。', author: '今日运势' },
 ];

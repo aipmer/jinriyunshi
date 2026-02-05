@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '@/sections/Navbar';
 import { Hero } from '@/sections/Hero';
 import { ZodiacGrid } from '@/sections/ZodiacGrid';
@@ -6,12 +6,15 @@ import { HoroscopeDisplay } from '@/sections/HoroscopeDisplay';
 import { Compatibility } from '@/sections/Compatibility';
 import { DailyQuote } from '@/sections/DailyQuote';
 import { Footer } from '@/sections/Footer';
+import { ZodiacSelectorModal } from '@/components/ZodiacSelectorModal';
 import { useLenis } from '@/hooks/useLenis';
 import type { ZodiacSign } from '@/types';
 import { zodiacSigns } from '@/data/zodiac';
 
 function App() {
   const [selectedSign, setSelectedSign] = useState<ZodiacSign | null>(null);
+  const [hasSavedSign, setHasSavedSign] = useState(false);
+  const [isZodiacModalOpen, setIsZodiacModalOpen] = useState(false);
 
   // Initialize Lenis smooth scroll
   useLenis();
@@ -23,12 +26,20 @@ function App() {
       const sign = zodiacSigns.find((s) => s.id === savedSignId);
       if (sign) {
         setSelectedSign(sign);
+        setHasSavedSign(true);
+        // Scroll to horoscope section immediately
+        setTimeout(() => {
+          const horoscopeSection = document.querySelector('#horoscope');
+          if (horoscopeSection) {
+            horoscopeSection.scrollIntoView({ behavior: 'auto' });
+          }
+        }, 100);
       }
     }
   }, []);
 
-  // Save selected sign to localStorage
-  const handleSelectSign = (sign: ZodiacSign) => {
+  // Save selected sign to localStorage and sync across components
+  const handleSelectSign = useCallback((sign: ZodiacSign) => {
     setSelectedSign(sign);
     localStorage.setItem('selectedZodiacSign', sign.id);
 
@@ -39,7 +50,12 @@ function App() {
         horoscopeSection.scrollIntoView({ behavior: 'smooth' });
       }
     }, 300);
-  };
+  }, []);
+
+  // Open zodiac selector modal
+  const openZodiacSelector = useCallback(() => {
+    setIsZodiacModalOpen(true);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#faedcd]">
@@ -48,27 +64,44 @@ function App() {
 
       {/* Main Content */}
       <main>
-        {/* Hero Section */}
-        <Hero />
+        {/* Hero Section - hidden if has saved sign */}
+        {!hasSavedSign && <Hero />}
 
-        {/* Zodiac Selection */}
-        <ZodiacGrid
-          onSelectSign={handleSelectSign}
-          selectedSign={selectedSign}
-        />
+        {/* Zodiac Selection - hidden if has saved sign */}
+        {!hasSavedSign && (
+          <ZodiacGrid
+            onSelectSign={handleSelectSign}
+            selectedSign={selectedSign}
+          />
+        )}
 
         {/* Horoscope Display */}
-        <HoroscopeDisplay selectedSign={selectedSign} />
+        <HoroscopeDisplay 
+          selectedSign={selectedSign} 
+          onChangeSign={openZodiacSelector}
+        />
+
+        {/* Daily Quote - moved above Compatibility */}
+        <DailyQuote />
 
         {/* Compatibility */}
-        <Compatibility />
-
-        {/* Daily Quote */}
-        <DailyQuote />
+        <Compatibility 
+          selectedSign={selectedSign} 
+          onChangeSign={handleSelectSign}
+        />
       </main>
 
       {/* Footer */}
       <Footer />
+
+      {/* Zodiac Selector Modal */}
+      <ZodiacSelectorModal
+        isOpen={isZodiacModalOpen}
+        onClose={() => setIsZodiacModalOpen(false)}
+        onSelect={handleSelectSign}
+        currentSign={selectedSign}
+        title="切换星座"
+      />
     </div>
   );
 }
