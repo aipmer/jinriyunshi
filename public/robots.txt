@@ -1,0 +1,25 @@
+# SEO Crawlers - Allow for search engine verification
+User-agent: *
+Allow: /
+
+# Explicitly allow search engine crawlers
+User-agent: 360Spider
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Sogouspider
+Allow: /
+
+User-agent: Sogoupic
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
