@@ -205,6 +205,15 @@ export function Hero() {
       <div className="absolute inset-0 md:hidden bg-gradient-to-br from-[#faedcd] via-[#fefae0] to-[#faedcd]" />
 
       {/* Content */}
+      {/* Site Logo */}
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50">
+        <img
+          src="/logo.png"
+          alt="今日运势"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-lg hover:rotate-12 transition-transform duration-300"
+        />
+      </div>
+
       <div className="relative z-10 text-center px-4 sm:px-6 max-w-4xl mx-auto">
         {/* Decorative Element */}
         <div className="mb-6 sm:mb-8 flex justify-center">
