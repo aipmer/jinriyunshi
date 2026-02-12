@@ -28,12 +28,12 @@ function App() {
         setSelectedSign(sign);
         setHasSavedSign(true);
         // Scroll to horoscope section immediately
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           const horoscopeSection = document.querySelector('#horoscope');
           if (horoscopeSection) {
             horoscopeSection.scrollIntoView({ behavior: 'auto' });
           }
-        }, 100);
+        });
       }
     }
   }, []);
@@ -43,13 +43,15 @@ function App() {
     setSelectedSign(sign);
     localStorage.setItem('selectedZodiacSign', sign.id);
 
-    // Scroll to horoscope section after a short delay
-    setTimeout(() => {
+    // Scroll to horoscope section
+    requestAnimationFrame(() => {
       const horoscopeSection = document.querySelector('#horoscope');
       if (horoscopeSection) {
+        // Use Lenis scroll if available, otherwise native smooth
+        // Note: scrollIntoView with behavior smooth usually works with Lenis too
         horoscopeSection.scrollIntoView({ behavior: 'smooth' });
       }
-    }, 300);
+    });
   }, []);
 
   // Open zodiac selector modal
@@ -76,8 +78,8 @@ function App() {
         )}
 
         {/* Horoscope Display */}
-        <HoroscopeDisplay 
-          selectedSign={selectedSign} 
+        <HoroscopeDisplay
+          selectedSign={selectedSign}
           onChangeSign={openZodiacSelector}
         />
 
@@ -85,8 +87,8 @@ function App() {
         <DailyQuote />
 
         {/* Compatibility */}
-        <Compatibility 
-          selectedSign={selectedSign} 
+        <Compatibility
+          selectedSign={selectedSign}
           onChangeSign={handleSelectSign}
         />
       </main>
