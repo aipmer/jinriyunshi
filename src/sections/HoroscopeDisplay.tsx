@@ -1,356 +1,174 @@
-import { useEffect, useRef, useState } from 'react';
-import { Heart, Briefcase, Activity, Coins, Star, Sparkles, Clock, Palette, Share2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { ZodiacSign, HoroscopeData, HoroscopeCategory } from '@/types';
-import { generateHoroscope } from '@/data/zodiac';
-import { Progress } from '@/components/ui/progress';
+import { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, ChevronDown, Share2, Sparkles } from 'lucide-react';
+import { generateHoroscope, getISOWeek } from '@/data/zodiac';
+import { trackEvent } from '@/lib/analytics';
+import { getFeedback, loadProfile, saveFeedback } from '@/lib/profile';
+import type { HoroscopeCategory, HoroscopeFeedback, ZodiacSign } from '@/types';
 import { ShareImageModal } from '@/components/ShareImageModal';
+import { MonthHeatmap } from '@/components/MonthHeatmap';
 
-interface HoroscopeDisplayProps {
-  selectedSign: ZodiacSign | null;
-  onChangeSign: () => void;
-}
+interface Props { selectedSign: ZodiacSign | null; onChangeSign: () => void }
 
-const categoryConfig: Record<HoroscopeCategory, { icon: typeof Heart; label: string; color: string }> = {
-  love: { icon: Heart, label: '爱情', color: 'text-rose-500' },
-  career: { icon: Briefcase, label: '事业', color: 'text-blue-500' },
-  health: { icon: Activity, label: '健康', color: 'text-green-500' },
-  wealth: { icon: Coins, label: '财运', color: 'text-amber-500' },
+const categories: Record<HoroscopeCategory, { label: string; bg: string }> = {
+  love: { label: '爱情', bg: 'bg-blush' },
+  career: { label: '事业', bg: 'bg-lilac' },
+  health: { label: '状态', bg: 'bg-sky' },
+  wealth: { label: '财富', bg: 'bg-cream' },
 };
 
-// 专业的差异化解读内容
-const getCategoryDescription = (category: HoroscopeCategory, score: number, signName: string): string => {
-  const descriptions: Record<HoroscopeCategory, Record<string, string[]>> = {
-    love: {
-      high: [
-        `${signName}今天的桃花运爆棚！单身者容易遇到心仪对象，已有伴侣的适合表白或求婚。你的魅力值达到巅峰，大胆展现真实的自己。`,
-        `爱情运势极佳！今天适合约会、告白或修复关系。你的温柔体贴会让对方心动不已，把握机会创造浪漫回忆。`,
-        `感情甜蜜指数飙升！${signName}今天特别容易获得异性的好感，主动出击会有意想不到的收获。`,
-      ],
-      medium: [
-        `${signName}今天的感情运势平稳，适合与伴侣深入交流，增进彼此了解。单身者可以多参加社交活动，扩大交友圈。`,
-        `爱情方面需要耐心经营，不要急于求成。已有伴侣的适合一起规划未来，单身者保持开放心态。`,
-        `感情运势中规中矩，${signName}今天适合用心倾听对方，用行动表达关心，细节决定成败。`,
-      ],
-      low: [
-        `${signName}今天感情运势稍弱，容易因小事产生误会。建议保持冷静，避免冲动发言，给彼此一些空间。`,
-        `爱情方面需要谨慎，今天不适合做重大感情决定。已有伴侣的注意沟通方式，单身者先专注自我提升。`,
-        `感情运势较低迷，${signName}今天容易情绪化，建议独处冷静思考，不要强求感情进展。`,
-      ],
-    },
-    career: {
-      high: [
-        `${signName}事业运势大好！今天适合提出新方案、争取晋升或开启新项目。你的创意和执行力会得到上司认可。`,
-        `职场贵人运旺！今天容易获得重要机会，主动承担任务会展现你的能力。谈判、签约成功率极高。`,
-        `事业蒸蒸日上！${signName}今天工作效率极高，适合处理复杂事务，你的专业素养会赢得同事尊重。`,
-      ],
-      medium: [
-        `${signName}今天事业运势平稳，适合按部就班完成日常工作。可以整理文档、复盘项目，为下一步做准备。`,
-        `职场方面保持低调务实，今天适合团队协作而非单打独斗。多听取他人意见，会有意外收获。`,
-        `事业运势一般，${signName}今天适合学习新技能、积累知识。不要急于求成，稳扎稳打更重要。`,
-      ],
-      low: [
-        `${signName}今天事业运势欠佳，容易遇到阻碍或突发状况。建议谨慎行事，重要决策延后处理。`,
-        `职场方面需要格外小心，今天容易与同事产生分歧。保持低调，避免卷入办公室政治。`,
-        `事业运势低迷，${signName}今天不适合冒险或改变计划。专注于完成手头工作，等待更好的时机。`,
-      ],
-    },
-    health: {
-      high: [
-        `${signName}身体状态极佳！今天适合运动健身、户外活动。精力充沛，可以尝试新的运动项目。`,
-        `健康运势很好！身心状态平衡，适合调整作息、养成健康习惯。今天开始健身计划会事半功倍。`,
-        `元气满满的一天！${signName}今天免疫力强，适合挑战体能极限。注意饮食均衡，保持好心情。`,
-      ],
-      medium: [
-        `${signName}今天健康状况平稳，注意劳逸结合。适当运动可以舒缓压力，但不要过度消耗体力。`,
-        `健康方面需要关注细节，今天容易感到轻微疲劳。保证充足睡眠，多喝水，避免熬夜。`,
-        `身体状态一般，${signName}今天适合做一些舒缓的运动如瑜伽、散步。注意饮食清淡，避免油腻。`,
-      ],
-      low: [
-        `${signName}今天健康运势较弱，容易感到疲惫或不适。建议减少外出，多休息，注意保暖。`,
-        `健康方面需要格外注意，今天身体可能发出警告信号。不要忽视小毛病，及时就医检查。`,
-        `健康运势低迷，${signName}今天容易失眠或消化不良。建议放松心情，避免剧烈运动和暴饮暴食。`,
-      ],
-    },
-    wealth: {
-      high: [
-        `${signName}财运亨通！今天适合投资理财、洽谈合作。偏财运旺，可能有意外之财或中奖机会。`,
-        `财富运势极佳！今天容易获得赚钱机会，大胆尝试新项目。你的理财眼光独到，收益可观。`,
-        `财源滚滚来！${signName}今天适合制定财务规划，开源节流双管齐下。投资方面会有好消息。`,
-      ],
-      medium: [
-        `${signName}今天财运平稳，适合稳健理财。可以整理账目、规划预算，避免不必要的开支。`,
-        `财富方面保持谨慎，今天不适合高风险投资。做好本职工作，正财收入稳定即可。`,
-        `财运一般，${signName}今天容易有意外支出。建议控制消费欲望，为未来储蓄做准备。`,
-      ],
-      low: [
-        `${signName}今天财运欠佳，容易破财或投资失利。建议保守理财，避免大额支出和借贷。`,
-        `财富运势低迷，今天不适合做任何财务决策。谨防诈骗，保护好自己的钱包。`,
-        `财运不佳，${signName}今天容易冲动消费。建议制定预算计划，量入为出，等待运势好转。`,
-      ],
-    },
-  };
+const defaultOrder: HoroscopeCategory[] = ['love', 'career', 'health', 'wealth'];
 
-  const level = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
-  const options = descriptions[category][level];
-  // 根据星座和日期选择一个固定的描述
-  const index = (signName.charCodeAt(0) + new Date().getDate()) % options.length;
-  return options[index];
-};
-
-export function HoroscopeDisplay({ selectedSign, onChangeSign }: HoroscopeDisplayProps) {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [horoscope, setHoroscope] = useState<HoroscopeData | null>(null);
-  const [expandedCards, setExpandedCards] = useState<Set<HoroscopeCategory>>(new Set(['love']));
-  const [isVisible, setIsVisible] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+export function HoroscopeDisplay({ selectedSign, onChangeSign }: Props) {
+  const [opened, setOpened] = useState<HoroscopeCategory | null>(null);
+  // 档案里勾选的「我更关注」在这里真正生效：排到前面，并默认展开第一个
+  const [interests, setInterests] = useState<HoroscopeCategory[]>([]);
+  const [shareOpen, setShareOpen] = useState(false);
+  const today = useMemo(() => new Date(), []);
+  const horoscope = useMemo(() => selectedSign ? generateHoroscope(selectedSign.id, today) : null, [selectedSign, today]);
+  const contentKey = selectedSign ? `${selectedSign.id}-${horoscope?.dateRange}` : '';
+  const [feedback, setFeedback] = useState<HoroscopeFeedback | null>(null);
 
   useEffect(() => {
-    if (selectedSign) {
-      const data = generateHoroscope(selectedSign.id);
-      setHoroscope(data);
-    }
-  }, [selectedSign]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
+    const profile = loadProfile();
+    if (!profile?.interests?.length) return;
+    setInterests(profile.interests);
+    setOpened(profile.interests[0]);
   }, []);
 
-  const renderStars = (score: number) => {
-    const starCount = Math.round(score / 20);
-    return (
-      <div className="flex gap-1">
-        {[...Array(5)].map((_, i) => (
-          <Star
-            key={i}
-            className={`w-4 h-4 ${
-              i < starCount
-                ? 'fill-[#d4a373] text-[#d4a373]'
-                : 'fill-gray-200 text-gray-200'
-            }`}
-          />
-        ))}
-      </div>
-    );
-  };
+  useEffect(() => {
+    if (!selectedSign || !horoscope) return;
+    setFeedback(getFeedback(contentKey));
+    trackEvent('horoscope_detail_viewed', { sign: selectedSign.id, period: 'daily', source: 'homepage' });
+  }, [selectedSign, horoscope, contentKey]);
 
-  const toggleCard = (category: HoroscopeCategory) => {
-    setExpandedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(category)) {
-        newSet.delete(category);
-      } else {
-        newSet.add(category);
-      }
-      return newSet;
-    });
-  };
-
-  if (!selectedSign) {
+  if (!selectedSign || !horoscope) {
     return (
-      <section
-        id="horoscope"
-        ref={sectionRef}
-        className="py-16 sm:py-24 px-6"
-      >
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-12 shadow-lg">
-            <Sparkles className="w-16 h-16 text-[#d4a373] mx-auto mb-6 opacity-50" />
-            <h3 className="text-2xl font-semibold text-gray-700 mb-3">
-              请先选择你的星座
-            </h3>
-            <p className="text-gray-500">
-              向上滚动选择星座，解锁今日运势
-            </p>
-          </div>
+      <section id="horoscope" className="px-5 py-14 sm:px-8">
+        <div className="sticker mx-auto max-w-4xl bg-white p-10 text-center">
+          <Sparkles className="mx-auto h-9 w-9 text-dusk" strokeWidth={2.4} aria-hidden="true" />
+          <h2 className="mt-5 font-display text-2xl font-black">先选一个星座</h2>
+          <p className="mt-2 text-ink/70">你的今日主题、四维解读和行动建议会显示在这里。</p>
         </div>
       </section>
     );
   }
 
+  const week = getISOWeek(today);
+  const order = [...interests, ...defaultOrder.filter((item) => !interests.includes(item))];
+  const toggle = (category: HoroscopeCategory) => {
+    setOpened((current) => (current === category ? null : category));
+    trackEvent('horoscope_category_expanded', { sign: selectedSign.id, category, period: 'daily', source: 'homepage' });
+  };
+  const submitFeedback = (value: HoroscopeFeedback) => {
+    setFeedback(value);
+    saveFeedback(contentKey, value);
+    trackEvent('horoscope_feedback', { sign: selectedSign.id, feedback: value, period: 'daily' });
+  };
+
   return (
-    <section
-      id="horoscope"
-      ref={sectionRef}
-      className="py-16 sm:py-24 px-6"
-    >
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div 
-            className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm rounded-full px-6 py-3 shadow-lg mb-4 cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={onChangeSign}
-          >
-            <span className="text-3xl">{selectedSign.icon}</span>
-            <div className="text-left">
-              <h2 className="text-xl font-bold text-gray-900">
-                {selectedSign.name}今日运势
-              </h2>
-              <p className="text-sm text-gray-500">
-                {new Date().toLocaleDateString('zh-CN', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </p>
-            </div>
-            <span className="text-xs text-[#d4a373] ml-2">点击切换</span>
-          </div>
+    <section id="horoscope" className="px-5 pb-10 pt-4 sm:px-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
 
-          {/* Share Button - 单独一行 */}
-          <div className="mt-4">
-            <Button
-              onClick={() => setIsShareModalOpen(true)}
-              variant="outline"
-              className="rounded-full border-[#d4a373] text-[#d4a373] hover:bg-[#d4a373] hover:text-white"
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              生成分享图
-            </Button>
+        {/* 星座身份条 */}
+        <button type="button" onClick={onChangeSign} className="sticker-btn sticker-tilt flex min-h-16 cursor-pointer items-center gap-3 bg-lilac px-4 py-3 text-left">
+          <span className="zodiac-glyph text-3xl leading-none" aria-hidden="true">{selectedSign.icon}</span>
+          <span className="flex-grow">
+            <strong className="block font-display text-lg font-black text-ink">{selectedSign.name}</strong>
+            <span className="text-xs font-medium text-ink/60">{selectedSign.dateRange}</span>
+          </span>
+          <span className="sticker-chip bg-white px-4 py-2 text-sm text-ink">切换</span>
+        </button>
+
+        {/* 今日主题主卡 */}
+        <article className="sticker-pop relative bg-white p-6 pt-7">
+          <div className="absolute -top-4 right-4 flex h-[74px] w-[74px] rotate-[8deg] flex-col items-center justify-center rounded-full border-[2.5px] border-outline bg-gold">
+            <span className="font-display text-3xl font-black leading-none tracking-tight">{horoscope.overall}</span>
+            <span className="text-[9px] font-black tracking-wider">综合</span>
           </div>
+          <p className="text-xs font-black tracking-[.14em] text-dusk">今日主题 · {horoscope.dateRange}</p>
+          <h2 className="mt-3 max-w-[220px] font-display text-2xl font-black leading-snug text-ink sm:max-w-none sm:text-4xl">{horoscope.theme}</h2>
+          <p className="mt-4 text-[15px] leading-8 text-ink/75">{horoscope.summary}</p>
+        </article>
+
+        {/* 四维：2×2 一眼可扫，详情统一开在网格下面——
+            开在格子里会让另外三块跟着重排，视线每次都要重新找。 */}
+        <div className="grid grid-cols-2 gap-3">
+          {order.map((category) => {
+            const item = horoscope.dimensions[category];
+            const config = categories[category];
+            const isOpen = opened === category;
+            return (
+              <button key={category} type="button" aria-expanded={isOpen} aria-controls="dimension-detail" onClick={() => toggle(category)} className={`sticker-sm flex min-h-14 cursor-pointer items-center justify-between px-4 py-3 text-left ${config.bg} ${isOpen ? 'ring-[3px] ring-outline ring-offset-2 ring-offset-moon' : ''}`}>
+                <span className="font-display text-sm font-black text-ink">{config.label}</span>
+                <span className="flex items-center gap-2">
+                  <span className="font-display text-2xl font-black tracking-tight text-ink">{item.score}</span>
+                  <ChevronDown className={`h-4 w-4 text-ink/50 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} strokeWidth={2.6} aria-hidden="true" />
+                </span>
+              </button>
+            );
+          })}
         </div>
-
-        {/* Overall Score */}
-        {horoscope && (
-          <div className={`bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-lg mb-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-lg font-semibold text-gray-700">综合运势</span>
-              <span className="text-3xl font-bold text-[#d4a373]">{horoscope.overall}%</span>
-            </div>
-            <Progress value={horoscope.overall} className="h-3 mb-4" />
-            <p className="text-gray-600 leading-relaxed">{horoscope.description}</p>
+        {opened && (
+          <div id="dimension-detail" className={`sticker animate-rise flex items-start gap-3 p-4 ${categories[opened].bg}`}>
+            <span className="sticker-tag flex-shrink-0 whitespace-nowrap bg-white px-2 py-0.5 text-xs text-ink">{categories[opened].label}</span>
+            <p className="text-sm leading-7 text-ink/80">{horoscope.dimensions[opened].summary}</p>
           </div>
         )}
 
-        {/* Category Cards */}
-        <div className="space-y-3">
-          {horoscope &&
-            (Object.keys(categoryConfig) as HoroscopeCategory[]).map((category, index) => {
-              const config = categoryConfig[category];
-              const Icon = config.icon;
-              const score = horoscope[category];
-              const isExpanded = expandedCards.has(category);
-
-              return (
-                <div
-                  key={category}
-                  className={`horoscope-card transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
-                  style={{ transitionDelay: `${(index + 1) * 100}ms` }}
-                  onClick={() => toggleCard(category)}
-                >
-                  <div
-                    className={`relative overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg transition-all duration-300 cursor-pointer ${
-                      isExpanded ? 'shadow-xl' : 'hover:shadow-xl'
-                    }`}
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                          <Icon className={`w-6 h-6 ${config.color}`} />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{config.label}</h3>
-                          {renderStars(score)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl font-bold text-[#d4a373]">{score}%</span>
-                        <div
-                          className={`w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-transform duration-300 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                        >
-                          <svg
-                            className="w-4 h-4 text-gray-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expanded Content - 使用差异化专业解读 */}
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ${
-                        isExpanded ? 'max-h-48' : 'max-h-0'
-                      }`}
-                    >
-                      <div className="px-5 pb-5 pt-2 border-t border-gray-100">
-                        <div className="flex items-start gap-3">
-                          <Sparkles className="w-5 h-5 text-[#d4a373] mt-0.5 flex-shrink-0" />
-                          <p className="text-gray-600 text-sm leading-relaxed">
-                            {getCategoryDescription(category, score, selectedSign.name)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="px-5 pb-5">
-                      <Progress value={score} className="h-2" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+        {/* 宜 / 忌 */}
+        <div className="sticker flex flex-col gap-3 bg-white p-4">
+          {horoscope.actions.map((item) => (
+            <div key={item} className="flex items-start gap-3">
+              <span className="sticker-tag bg-leaf px-2 py-0.5 text-xs text-ink">宜</span>
+              <span className="text-sm leading-7 text-ink/80">{item}</span>
+            </div>
+          ))}
+          {horoscope.cautions.map((item) => (
+            <div key={item} className="flex items-start gap-3">
+              <span className="sticker-tag bg-coral px-2 py-0.5 text-xs text-ink">忌</span>
+              <span className="text-sm leading-7 text-ink/80">{item}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Lucky Info */}
-        {horoscope && (
-          <div className={`mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 transition-all duration-700 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            {[
-              { icon: Palette, label: '幸运色', value: horoscope.luckyColor },
-              { icon: Star, label: '幸运数字', value: horoscope.luckyNumber.toString() },
-              { icon: Clock, label: '幸运时段', value: horoscope.luckyTime },
-              { icon: Sparkles, label: '今日建议', value: horoscope.advice },
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={index}
-                  className="bg-white/60 backdrop-blur-sm rounded-xl p-3 text-center hover:bg-white/80 transition-colors"
-                >
-                  <Icon className="w-5 h-5 text-[#d4a373] mx-auto mb-1" />
-                  <p className="text-xs text-gray-500 mb-0.5">{item.label}</p>
-                  <p className="text-sm font-medium text-gray-900 line-clamp-2">{item.value}</p>
-                </div>
-              );
-            })}
+        {/* 幸运提示 + 周月运入口 */}
+        <div className="sticker flex flex-col gap-4 bg-white p-5">
+          <div className="grid grid-cols-3 gap-3">
+            {[['幸运色', horoscope.luckyColor], ['幸运数字', String(horoscope.luckyNumber)], ['舒展时间', horoscope.luckyTime]].map(([label, value]) => (
+              <div key={label} className="flex flex-col gap-1">
+                <span className="text-xs text-ink/55">{label}</span>
+                <span className="font-display text-sm font-black text-ink">{value}</span>
+              </div>
+            ))}
           </div>
-        )}
+          <div id="periods" className="grid grid-cols-2 gap-3 border-t-2 border-outline/10 pt-4">
+            <a href={`/weekly/${selectedSign.id}/${week.year}/${week.week}/`} onClick={() => trackEvent('period_horoscope_viewed', { sign: selectedSign.id, period: 'weekly', source: 'homepage' })} className="sticker-btn-sm flex min-h-12 items-center justify-center gap-2 bg-sky text-sm font-black text-ink">
+              <CalendarDays className="h-4 w-4" strokeWidth={2.4} aria-hidden="true" /> 本周运势
+            </a>
+            <a href={`/monthly/${selectedSign.id}/${today.getFullYear()}/${today.getMonth() + 1}/`} onClick={() => trackEvent('period_horoscope_viewed', { sign: selectedSign.id, period: 'monthly', source: 'homepage' })} className="sticker-btn-sm flex min-h-12 items-center justify-center gap-2 bg-cream text-sm font-black text-ink">
+              <CalendarDays className="h-4 w-4" strokeWidth={2.4} aria-hidden="true" /> 本月运势
+            </a>
+          </div>
+        </div>
+
+        <MonthHeatmap signId={selectedSign.id} />
+
+        <button type="button" onClick={() => setShareOpen(true)} className="sticker-btn flex min-h-14 cursor-pointer items-center justify-center gap-2 bg-coral font-display text-base font-black text-ink">
+          <Share2 className="h-5 w-5" strokeWidth={2.6} aria-hidden="true" /> 生成分享图
+        </button>
+
+        {/* 反馈 */}
+        <div className="sticker bg-white p-5 text-center">
+          <p className="font-display text-sm font-black text-ink">今天的内容对你有帮助吗？</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {([['helpful', '有帮助'], ['neutral', '一般'], ['not_for_me', '不太符合']] as const).map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={feedback === value} onClick={() => submitFeedback(value)} className={`sticker-btn-sm min-h-11 cursor-pointer px-4 py-2 text-sm font-bold text-ink ${feedback === value ? 'bg-gold' : 'bg-white'}`}>{label}</button>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-ink/50">{horoscope.disclaimer}</p>
+        </div>
       </div>
-
-      {/* Share Image Modal */}
-      <ShareImageModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        selectedSign={selectedSign}
-        horoscope={horoscope}
-        type="horoscope"
-      />
+      <ShareImageModal isOpen={shareOpen} onClose={() => setShareOpen(false)} selectedSign={selectedSign} horoscope={horoscope} type="horoscope" />
     </section>
   );
 }

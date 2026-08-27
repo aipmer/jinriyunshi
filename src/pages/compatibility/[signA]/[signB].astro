@@ -1,0 +1,19 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { calculateCompatibility, getCanonicalCompatibilityPair, zodiacSigns } from '../../../data/zodiac';
+
+export function getStaticPaths() {
+  const paths = [];
+  for (let a = 0; a < zodiacSigns.length; a += 1) for (let b = a; b < zodiacSigns.length; b += 1) {
+    const [signA, signB] = getCanonicalCompatibilityPair(zodiacSigns[a].id, zodiacSigns[b].id);
+    paths.push({ params: { signA, signB } });
+  }
+  return paths;
+}
+const signA = zodiacSigns.find((item) => item.id === Astro.params.signA)!; const signB = zodiacSigns.find((item) => item.id === Astro.params.signB)!;
+const result = calculateCompatibility(signA.id, signB.id); const canonical = new URL(`/compatibility/${signA.id}/${signB.id}/`, Astro.site).href;
+const labels = { chemistry: '默契', communication: '沟通', emotion: '情感连接', longTerm: '长期相处' };
+---
+<Layout title={`${signA.name}和${signB.name}配对指数 - 今日运势`} description={`${signA.name}与${signB.name}星座配对，从默契、沟通、情感和长期相处四个维度提供轻量关系提示。`} canonical={canonical}>
+  <main class="min-h-screen bg-moon px-4 py-8 sm:px-6"><div class="mx-auto max-w-4xl"><nav class="mb-8 text-sm font-medium text-ink/55"><a href="/" class="font-bold hover:text-dusk">今日运势</a> <span class="mx-2">›</span> 星座配对</nav><header class="sticker relative overflow-hidden bg-dusk p-7 text-center text-white shadow-[6px_6px_0_#372c86] sm:p-10"><div class="text-6xl">{signA.icon} <span class="text-3xl text-coral">×</span> {signB.icon}</div><h1 class="mt-4 text-3xl font-black sm:text-5xl">{signA.name}与{signB.name}</h1><div class="mt-6 text-8xl font-black tracking-tight text-gold">{result.score}</div><p class="mx-auto mt-4 max-w-2xl leading-8 text-white/80">{result.description}</p></header><section class="mt-4 grid gap-3 sm:grid-cols-2">{Object.entries(result.dimensions).map(([key, item]) => <article class="sticker-sm bg-white p-5"><div class="flex justify-between"><h2 class="font-black">{labels[key]}</h2><strong class="text-2xl font-black text-ink">{item.score}</strong></div><div class="mt-3 h-2.5 overflow-hidden rounded-full border-2 border-outline bg-white"><div class="h-full bg-dusk" style={`width:${item.score}%`}></div></div><p class="mt-4 text-sm leading-7 text-ink/75">{item.summary}</p></article>)}</section><section class="mt-4 grid gap-4 sm:grid-cols-2"><article class="sticker bg-sky p-6"><h2 class="font-black text-ink">相处优势</h2><ul class="mt-3 space-y-1 text-ink/75">{result.strengths.map((item) => <li>· {item}</li>)}</ul></article><article class="sticker bg-blush p-6"><h2 class="font-black text-ink">需要留意</h2><ul class="mt-3 space-y-1 text-ink/75">{result.frictions.map((item) => <li>· {item}</li>)}</ul></article></section><p class="mt-6 text-center text-sm leading-6 text-ink/55">{result.advice}</p><div class="mt-6 text-center"><a href="/#compatibility" class="sticker-btn inline-flex min-h-12 items-center bg-gold px-6 font-black text-ink">测试另一组星座</a></div></div></main>
+</Layout>

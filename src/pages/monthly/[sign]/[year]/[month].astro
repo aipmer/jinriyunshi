@@ -1,0 +1,17 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import PeriodHoroscopePage from '../../../../components/PeriodHoroscopePage.astro';
+import { generateHoroscope, zodiacSigns } from '../../../../data/zodiac';
+
+export function getStaticPaths() {
+  return [2026, 2027].flatMap((year) => zodiacSigns.flatMap((sign) => Array.from({ length: 12 }, (_, index) => ({ params: { sign: sign.id, year: String(year), month: String(index + 1) }, props: { sign } }))));
+}
+const { sign } = Astro.props; const year = Number(Astro.params.year); const month = Number(Astro.params.month);
+const date = new Date(year, month - 1, 1); const horoscope = generateHoroscope(sign.id, date, 'monthly');
+const previous = new Date(year, month - 2, 1); const next = new Date(year, month, 1);
+const href = (value: Date) => `/monthly/${sign.id}/${value.getFullYear()}/${value.getMonth() + 1}/`;
+const canonical = new URL(`/monthly/${sign.id}/${year}/${month}/`, Astro.site).href;
+---
+<Layout title={`${sign.name}${year}年${month}月运势 - 今日运势`} description={`${sign.name}${year}年${month}月运势，包含月度主题、关键日期、爱情、事业、健康与财富建议。`} canonical={canonical} ogType="article">
+  <PeriodHoroscopePage sign={sign} horoscope={horoscope} periodLabel="每月运势" previousHref={previous.getFullYear() >= 2026 ? href(previous) : undefined} nextHref={next.getFullYear() <= 2027 ? href(next) : undefined} />
+</Layout>

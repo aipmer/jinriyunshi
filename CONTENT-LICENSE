@@ -1,0 +1,45 @@
+# Content License — CC BY-NC-SA 4.0
+
+The **content** in this repository is licensed under
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+(full legal text: <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode>).
+
+This is **separate from** the MIT license that covers the source code (see `LICENSE`).
+
+## What counts as "content"
+
+The original Chinese-language horoscope copy in `src/data/zodiac.ts`, specifically
+these exported / module-level collections and their string contents:
+
+- `themesByElement` — 每日主题词库（按火/土/风/水四象分库）
+- `summaries` — 各星座摘要文案
+- `actionsByElement` — 行动建议词库
+- `cautionsByElement` — 注意事项词库
+- `dimensionCopy` — 四维解读文案（元素 × 维度 × 档位，共 144 条）
+- `personalityProfiles` — 星座性格档案文案
+
+Everything else in this repository — including the generation engine itself
+(`hashString`, `seededRandom`, `generateHoroscope`, `calculateCompatibility`,
+the scoring and selection logic), all components, layouts, styles, build
+scripts and configuration — is **MIT** licensed.
+
+## What this means in practice
+
+- ✅ Read, study, fork, and learn from the copy.
+- ✅ Reuse it in non-commercial work, with attribution, under the same license.
+- ❌ Do not use the copy to operate a commercial or ad-supported horoscope
+  site/app.
+
+The engine is deliberately MIT so the interesting part — deterministic,
+seed-based content generation — stays freely reusable. The restriction applies
+only to the hand-written copy, which took meaningful authorial effort to tune.
+
+## Why the split
+
+The original site is retired; its successor runs at
+<https://laohuangli.info/xingzuo/>. Releasing the copy under a permissive
+license would let anyone stand up a content-identical competitor to the active
+site in an afternoon — so the copy is NC, while the code stays open.
+
+Contributions are welcome: fork it, open issues and PRs. Note that new copy you
+contribute falls under the same CC BY-NC-SA terms as the existing copy.

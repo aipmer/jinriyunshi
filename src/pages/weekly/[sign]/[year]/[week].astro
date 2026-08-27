@@ -1,0 +1,27 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import PeriodHoroscopePage from '../../../../components/PeriodHoroscopePage.astro';
+import { generateHoroscope, getDateFromISOWeek, getISOWeek, zodiacSigns } from '../../../../data/zodiac';
+
+export function getStaticPaths() {
+  const paths = [];
+  for (const year of [2026, 2027]) {
+    for (let week = 1; week <= 53; week += 1) {
+      const date = getDateFromISOWeek(year, week);
+      const iso = getISOWeek(date);
+      if (iso.year !== year || iso.week !== week) continue;
+      for (const sign of zodiacSigns) paths.push({ params: { sign: sign.id, year: String(year), week: String(week) }, props: { sign, date } });
+    }
+  }
+  return paths;
+}
+const { sign, date } = Astro.props;
+const year = Number(Astro.params.year); const week = Number(Astro.params.week);
+const horoscope = generateHoroscope(sign.id, date, 'weekly');
+const previous = new Date(date); previous.setDate(previous.getDate() - 7); const previousWeek = getISOWeek(previous);
+const next = new Date(date); next.setDate(next.getDate() + 7); const nextWeek = getISOWeek(next);
+const canonical = new URL(`/weekly/${sign.id}/${year}/${week}/`, Astro.site).href;
+---
+<Layout title={`${sign.name}${year}年第${week}周运势 - 今日运势`} description={`${sign.name}${horoscope.dateRange}周运势，包含爱情、事业、健康、财富与行动建议。`} canonical={canonical} ogType="article">
+  <PeriodHoroscopePage sign={sign} horoscope={horoscope} periodLabel="每周运势" previousHref={previousWeek.year >= 2026 ? `/weekly/${sign.id}/${previousWeek.year}/${previousWeek.week}/` : undefined} nextHref={nextWeek.year <= 2027 ? `/weekly/${sign.id}/${nextWeek.year}/${nextWeek.week}/` : undefined} />
+</Layout>

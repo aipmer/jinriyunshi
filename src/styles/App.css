@@ -1,0 +1,85 @@
+/* 糖果贴纸设计系统
+ * 三条规则：平涂色块、深靛描边、无模糊硬阴影。不用渐变。
+ *
+ * 阴影是有语义的——只有主卡和「能按的东西」带阴影，静态卡片只留描边。
+ * 全部元素都带同等强度的描边加阴影时没有层级，眼睛既没有落点也没有休息处，
+ * 长时间看会累；把阴影收回给可交互元素，顺带让它变成一个可用性信号。
+ */
+
+.sticker {
+  border: var(--sticker-border) solid var(--sticker-outline);
+  border-radius: 18px;
+}
+
+.sticker-sm {
+  border: var(--sticker-border) solid var(--sticker-outline);
+  border-radius: 14px;
+}
+
+/* 主卡：全页唯一的视觉重音，用品牌靛紫的硬阴影压住重心 */
+.sticker-pop {
+  border: 2.5px solid var(--sticker-outline);
+  border-radius: 24px;
+  box-shadow: 5px 5px 0 #5b4ae8;
+}
+
+/* 手感核心：按下去像把贴纸按进纸面 */
+.sticker-btn {
+  border: var(--sticker-border) solid var(--sticker-outline);
+  border-radius: 16px;
+  box-shadow: var(--sticker-shadow);
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+.sticker-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--sticker-outline); }
+.sticker-btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--sticker-outline); }
+
+.sticker-btn-sm {
+  border: var(--sticker-border) solid var(--sticker-outline);
+  border-radius: 12px;
+  box-shadow: var(--sticker-shadow-sm);
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+.sticker-btn-sm:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--sticker-outline); }
+.sticker-btn-sm:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--sticker-outline); }
+
+/* 药丸标签：日期、元素、状态 */
+.sticker-chip {
+  border: 2px solid var(--sticker-outline);
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* 方形小标：宜 / 忌 */
+.sticker-tag {
+  border: 2px solid var(--sticker-outline);
+  border-radius: 7px;
+  font-weight: 900;
+}
+
+/* 贴纸微微歪一点才像贴上去的，不是印上去的 */
+.sticker-tilt { transform: rotate(-1deg); }
+.sticker-tilt-r { transform: rotate(1.5deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sticker-tilt, .sticker-tilt-r { transform: none; }
+  .sticker-btn:hover, .sticker-btn:active,
+  .sticker-btn-sm:hover, .sticker-btn-sm:active { transform: none; }
+}
+
+/* 星座符号本身是发丝字重，在描边的贴纸语言里太细，描一道边补重量 */
+.zodiac-glyph {
+  -webkit-text-stroke: 1px currentColor;
+  paint-order: stroke fill;
+}
+
+/* 原生日期控件在 iOS Safari 上有自己的固有宽度，width:100% 压不住它，
+ * 会顶出卡片右边（桌面 Chrome 不复现，appearance 为 auto 时才发生）。
+ * body 上有 overflow-x:hidden，所以表现为被裁掉而不是横向滚动。 */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
